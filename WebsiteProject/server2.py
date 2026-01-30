@@ -280,7 +280,7 @@ def leaderBoard():
             emoji = "👾"
         students.append(emoji + " " + str(sorted_by_hours[i]) + " " + special + " " + tier)
     studentOfTheWeek = StudentOfTheWeek()
-    print(studentOfTheWeek)
+    #print(studentOfTheWeek)
     return render_template('leaderboard2.0.html', message=message,form=form, students=students, studentOfTheWeek=studentOfTheWeek)
 @app.route('/leaderboard/personalstats')
 def personalStats():
