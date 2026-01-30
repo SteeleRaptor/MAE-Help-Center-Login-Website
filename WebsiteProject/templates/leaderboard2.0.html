@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leaderboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: url("{{ url_for('static', filename='15_mod2.png') }}") no-repeat center center;
+      background-size: cover;
+      padding: 20px;
+    }
+
+    /* Container to hold leaderboard + login side by side */
+    .content-wrapper {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100%;
+      max-width: 1200px;
+      gap: 20px;
+      flex-wrap: wrap; /* ensures mobile responsiveness */
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      padding: 20px 30px;
+      margin: 20px 0;
+      width: 100%;
+      max-width: 700px;
+      text-align: center;
+    }
+
+    .login-card {
+      max-width: 350px;   /* narrower box for login */
+      flex-shrink: 0;     /* prevent shrinking */
+    }
+
+    h2 {
+      margin-top: 0;
+      color: #333;
+    }
+
+    /* Leaderboard table smaller font */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 0.85rem;   /* smaller font */
+    }
+
+    th, td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      text-align: left;
+      font-size: 0.8rem;
+      color: #555;
+    }
+
+    tr:hover {
+      background: rgba(0, 123, 255, 0.08);
+    }
+
+    .rank {
+      font-weight: bold;
+      text-align: center;
+      width: 50px;
+    }
+
+    .name {
+      text-align: left;
+    }
+
+    .highlight {
+      background: #007bff;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 6px;
+      margin: 10px 0;
+      display: inline-block;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    input, button {
+      font-size: 16px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    input[type=submit] {
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    input[type=submit]:hover {
+      background: #0056b3;
+    }
+
+    a {
+      color: #007bff;
+      text-decoration: none;
+      font-size: 16px;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    #message1 {
+      background: #FF0000;
+      color: white;
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+      display: inline-block;
+    }
+
+    /* alternating rows for readability */
+    tbody tr:nth-child(odd) {
+      background: rgba(0, 0, 0, 0.02);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Wrapper to arrange cards -->
+  <div class="content-wrapper">
+    <!-- Leaderboard -->
+    <div class="card">
+      <h2>Student of the Week</h2>
+      <div class="highlight">{{ studentOfTheWeek }}</div>
+
+      <h2>Top Students</h2>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" class="rank">Rank</th>
+            <th scope="col" class="name">Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in students[:] %}
+          <tr>
+            <td class="rank">{{ loop.index }}</td>
+            <td class="name">{{ student }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Login Box on the right -->
+    <div class="card login-card">
+      <h2>MAE Center Leaderboard</h2>
+      <h3>Enter email to see personal stats</h3>
+      {% if message %}
+        <p id="message1">{{ message }}</p>
+      {% endif %}
+      <form action="" method="POST" id="form1" name="form1">
+        {{ form.csrf_token }}
+        <p>
+          {{ form.email.label }}<br/>
+          {{ form.email(id="email") }}
+          <span class="infotext">@uccs.edu</span>
+        </p>
+        <p>{{ form.seeStats }}</p>
+        <input type="hidden" id="altSignOut" name="altSignOut" value="False">
+      </form>
+      <p><a href="/">Home</a></p>
+    </div>
+  </div>
+
+  <script>
+    setInterval(function mainScript() {
+      const emailField = document.getElementById("email");
+      if (emailField && emailField.value !== ""){
+        setTimeout(function () {
+          emailField.value="";
+        },15000);
+      }
+    },5000);
+
+    document.addEventListener('keydown',function(event){
+      if(event.ctrlKey && event.key === 'Enter'){
+        document.getElementById("altSignOut").value="True";
+        document.form1.submit();
+      }
+    });
+  </script>
+</body>
+</html>

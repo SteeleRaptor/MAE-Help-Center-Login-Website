@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+		    font-size:18px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: url({{ url_for('static', filename='15_mod2.png') }}) no-repeat center center;
+		    background-size: cover;
+            margin: 0;
+        }
+        .login-container { background: rgba(255, 255, 255, 0.8); padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); width: 550px; font-size: 25px; text-align: center; }
+        input {
+            width: 40%;
+		    font-size: 25px;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+        }
+        input[type=submit] {
+            width: 30%;
+            padding: 12px;
+		    font-size: 25px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        h3 {
+            font-size: 22px;
+            color: rgb(143,143,143);
+            margin-bottom: 5px;
+        }
+        input[type=submit]:hover {
+            background: #0056b3;
+        }
+        #signout{
+            margin-left: 20px;
+            background: #ff1100;
+        }
+        #signout:hover{
+            background: #b31200;
+        }
+        .login-container a {
+            display: block;
+		    font-size: 25px;
+            margin-top: 5px;
+            text-decoration: none;
+            color: #007bff;
+        }
+        .login-container a:hover {
+            text-decoration: underline;
+        }
+        #message1{
+            background: #FF0000 !important;
+            color: white;
+            padding: 10px !important;
+            margin-bottom: -10px;
+            border-radius: 0 !important;
+            box-shadow: 1px 1px 1px #aaaaaa;
+            display: inline-block !important;
+            font-size: 16px;
+        }
+        .main-container {
+            display: flex;
+            flex-direction: column; /* stack vertically */
+            align-items: center;    /* keep same horizontal alignment */
+            gap: 20px;              /* space between login and student box */
+        }
+
+        .student-container {
+            background: rgba(255, 255, 255, 0.85);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+            width: 550px;
+            font-size: 22px;
+            text-align: center;
+        }
+
+         .highlight {
+          background: #007bff;
+          color: white;
+          padding: 10px 18px;
+          border-radius: 6px;
+          margin: 10px 0;
+          display: inline-block;
+          font-weight: bold;
+          font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Login box -->
+        <div class="login-container">
+            <h2>Welcome to the MAE Center</h2>
+            <h3>Please sign in and sign out</h3>
+            {% if message %}
+                <p id="message1">{{ message }}</p>
+            {% endif %}
+            <form action="" method="POST" id="form1" name="form1">
+                {{ form.csrf_token }}
+                <p>{{form.email.label}}<br/>
+                    {{form.email}}
+                    <span class="infotext">@uccs.edu</span>
+                </p>
+                <p>{{form.signIn()}}{{form.signOut()}}</p>
+                {{form.altSignOut()}}
+            </form>
+
+            <p><a href="/feedback">Leave Tutor Feedback</a></p>
+            <p><a href="/leaderboard">Leaderboard</a></p>
+            <p ><a href="/signup" style="font-size: 18px;">Invalid email? Click here to sign up</a></p>
+        </div>
+
+        <!-- Student of the Week box -->
+        <div class="student-container">
+            <h2>Student of the Week</h2>
+            <div class="highlight"> {{ studentOfTheWeek }}</div>
+        </div>
+    </div>
+</body>
+<script>
+    setInterval(function mainScript() {
+        if (document.getElementById("email").value!=""){
+        setTimeout(function (){document.getElementById("email").value="";},15000);
+        }
+    },5000);
+    document.addEventListener('keydown',function(event){
+    if(event.ctrlKey && event.key === 'Enter'){
+        document.getElementById("altSignOut").value="True";
+        document.form1.submit();
+    }
+    });
+</script>
+</html>
