@@ -4,6 +4,7 @@ import ctypes
 import sys
 import subprocess
 import pyuac
+import openpyxl
 
 def is_admin():
     try:
@@ -27,7 +28,10 @@ loginTimeFile = '/Data/emails.csv'
 logoutTimeFile = '/Data/Logout Times.csv'
 feedbackFile = '/Data/feedback.csv'
 pendingListFile = '/Data/pending list.csv'
-
+AdminSettings = '/Admin/settings.xlsx'
+eternalLoginPath = f'/Data/Logins-Eternal.csv'
+eternalLogoutPath = f'/Data/Logins-Eternal.csv'
+MasterPath = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__) #general convention for initializing flask app
 csrf = CSRFProtect(app)
@@ -39,8 +43,35 @@ csrf.init_app(app)
 end_time = 0.0
 admin = False
 #Sign in page
+
+#-------Startup------
+def LoadSettings():
+    global emailListFile,loginTimeFile,logoutTimeFile,feedbackFile,pendingListFile
+    AdminSettings = '/Admin/settings.xlsx'
+    path = MasterPath
+    settingsPath = path + AdminSettings
+    wb = openpyxl.load_workbook(settingsPath)
+    ws = wb.active
+    semester = ws['B2'].value
+    emailList = ws['B3'].value
+    emailListFile = f'/Data/{emailList}'
+    loginTimeFile = f'/Data/Logins-{semester}.csv'
+    logoutTimeFile = f'/Data/Logouts-{semester}.csv'
+    feedbackFile = '/Data/feedback.csv'
+    pendingListFile = '/Data/pending list.csv'
+    if not os.path.exists(path+loginTimeFile):
+        with open(path+loginTimeFile, 'w', newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([f"Logins {semester}"])
+    if not os.path.exists(path+logoutTimeFile):
+        with open(path+logoutTimeFile, 'w', newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([f"Logins {semester}"])
+
+#Webpages
 @app.route('/', methods = ["get" ,"post"])
-def signin():
+def signinPage():
+    print("0")
     global end_time, globalemail, logoutTime,admin
     admin = False
     form = SignInForm()
@@ -48,69 +79,106 @@ def signin():
     message = ""
     if form.is_submitted():
         result = request.form
-        recordTime = time.time()
         #Signin procedure
+        print(1)
         if "signIn" in result:
-            #verification process
-            inputEmail = result.get("email")+"@uccs.edu"
-            pathR = os.path.abspath(os.path.dirname(__file__)) + emailList
-            valid = False
-            with open(pathR, 'r', newline="") as csvfile:
-                reader = csv.reader(csvfile)
-                for row in reader:
-                    if row[0] == inputEmail:
-                        valid = True
-                        print(valid)
-
-            pathW = os.path.abspath(os.path.dirname(__file__)) + loginTimeFile
+            signin(result)
             if valid:
-                #write to csv file
-                if not checkRecent(inputEmail, recordTime):
-                    with open(pathW, 'a', newline="") as csvfile:
-                        writer = csv.writer(csvfile)
-                        writer.writerow([inputEmail, recordTime])
-                print([result.get('email'), recordTime]) #display to console for testing
-                # start timer for thank you page
-                start_time = time.time()
-                end_time = start_time + 1.0
-                globalemail = inputEmail
                 return redirect('/thankyou')
-            else:
-                message = "Invalid Email"
-
         #Signout procedure
         elif "Sign Out" in result or "altSignOut" in result:
-
-            # verification process
-            inputEmail = result.get("email") + "@uccs.edu"
-            pathR = os.path.abspath(os.path.dirname(__file__)) + emailList
-            valid = False
-            with open(pathR, 'r', newline="") as csvfile:
-                reader = csv.reader(csvfile)
-                for row in reader:
-                    if row[0] == inputEmail:
-                        valid = True
-                        print(valid)
-
-            pathW = os.path.abspath(os.path.dirname(__file__)) + logoutTimeFile
+            message,valid = signout(result)
             if valid:
-                # write to csv file
-                with open(pathW, 'a', newline="") as csvfile:
-                    writer = csv.writer(csvfile)
-                    writer.writerow([inputEmail, recordTime])
-                    print("logged out at",recordTime)  # display to console for testing
-                print(result,"signed out")
-                # start timer for thank you page
-                start_time = time.time()
-                end_time = start_time + 1.0
-                logoutTime = recordTime
-                globalemail = inputEmail
                 return redirect('/thankyouSignOut')
-            else:
-                message = "Invalid Email"
-
+    message = ""
     #renders the webpage and sends the form variable to html
     return render_template('signin2.0.html', form=form, message=message, studentOfTheWeek=studentOfTheWeek)
+
+def signin(result):
+    print(2)
+    message = ""
+    global end_time, globalemail
+    recordTime = time.time()
+    inputEmail = result.get("email")+"@uccs.edu"
+    #verification process
+    pathR = MasterPath + emailList
+    valid = False
+    with open(pathR, 'r', newline="") as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            if row[0] == inputEmail:
+                valid = True
+                print(valid)
+    pathW = MasterPath + loginTimeFile
+    if valid:
+        #write to csv file
+        if not checkRecent(inputEmail, recordTime):
+            with open(pathW, 'a', newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow([inputEmail, recordTime])
+        #print([result.get('email'), recordTime]) #display to console for testing
+        # start timer for thank you page
+        start_time = time.time()
+        end_time = start_time + 1.0
+        globalemail = inputEmail
+    else:
+        message = "Invalid Email"
+    #return message
+    print(3)
+    return message, valid
+    
+def signout(result):
+    global globalemail, logoutTime
+    recordTime = time.time()
+    # verification process
+    inputEmail = result.get("email") + "@uccs.edu"
+    pathR = MasterPath + emailList
+    valid = False
+    with open(pathR, 'r', newline="") as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            if row[0] == inputEmail:
+                valid = True
+                print(valid)
+    #checkAccident(inputEmail,recordTime)#check if someone accidentaly signed in while signing out
+    pathW = MasterPath + logoutTimeFile
+    if valid:
+        # write to csv file
+        #checkAccident(inputEmail,recordTime)
+        with open(pathW, 'a', newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow([inputEmail, recordTime])
+            print("logged out at",recordTime)  # display to console for testing
+        print(result,"signed out")
+        # start timer for thank you page
+        start_time = time.time()
+        end_time = start_time + 1.0
+        logoutTime = recordTime
+        globalemail = inputEmail
+        
+    else:
+        message = "Invalid Email"
+    return message, valid
+
+'''def checkAccident(inputEmail,recordTime):
+    GraceTime = float(recordTime)-120 #2 minutes to cancel logout
+    pathR = MasterPath + loginTimeFile
+    count = 0
+    accident = False
+    with open(pathR, 'r+', newline="") as csvfile:
+        reader = csv.reader(csvfile)
+        writer = csv.writer(csvfile)
+        for row in reader:
+            if row[0] == globalemail:
+                print("oof")
+                #print(row[1])
+                #print(float(row[1]))
+                #print(GraceTime)
+                #if float(row[1]) >= GraceTime:
+                    #accident = True
+            if accident:
+                writer.writerow([""])
+                print("accident fixed")'''
 
 #Thank you page
 @app.route('/thankyou')
@@ -120,7 +188,7 @@ def thankYou():
     #if time is not up then render template
     if time.time()<=end_time:
         if globalemail != "":
-            pathW = os.path.abspath(os.path.dirname(__file__)) + loginTimeFile
+            pathW = MasterPath + loginTimeFile
             count = 0
             with open(pathW, 'r', newline="") as csvfile:
                 reader = csv.reader(csvfile)
@@ -150,7 +218,7 @@ def feedBack():
     form = FeedBackForm()
     if form.is_submitted():
         result = request.form
-        path = os.path.abspath(os.path.dirname(__file__)) + feedbackFile
+        path = MasterPath + feedbackFile
         # write to csv file
         with open(path, 'a', newline="") as csvfile:
             writer = csv.writer(csvfile)
@@ -207,81 +275,87 @@ class Logout:
 @app.route('/leaderboard', methods = ["get" ,"post"])
 def leaderBoard():
     global end_time, emailStat, sorted_by_hours
-    form = SignInForm()
-    message = ""
-    if form.is_submitted():
-        result = request.form
-        recordTime = time.time()
-        print(result)
-        # Signin procedure
-        # verification process
-        inputEmail = result.get("email") + "@uccs.edu"
-        pathR = os.path.abspath(os.path.dirname(__file__)) + emailList
-        valid = False
-        with open(pathR, 'r', newline="") as csvfile:
+    try:
+        form = SignInForm()
+        message = ""
+        if form.is_submitted():
+            result = request.form
+            recordTime = time.time()
+            print(result)
+            # Signin procedure
+            # verification process
+            inputEmail = result.get("email") + "@uccs.edu"
+            pathR = MasterPath + emailList
+            valid = False
+            with open(pathR, 'r', newline="") as csvfile:
+                reader = csv.reader(csvfile)
+                for row in reader:
+                    if row[0] == inputEmail:
+                        valid = True
+                        print(valid)
+            if valid:
+                # write to csv file
+                emailStat = inputEmail
+                # start timer for thank you page
+                start_time = time.time()
+                end_time = start_time + 1.0
+                return redirect('/leaderboard/personalstats')
+            else:
+                message = "Invalid Email"
+        Logins = []
+        Logouts = []
+        now = time.time()
+        pathLogin = MasterPath + loginTimeFile
+        pathLogout = MasterPath + logoutTimeFile
+        with open(pathLogin, 'r', newline="") as csvfile:
             reader = csv.reader(csvfile)
+            header = next(reader)
             for row in reader:
-                if row[0] == inputEmail:
-                    valid = True
-                    print(valid)
-        if valid:
-            # write to csv file
-            emailStat = inputEmail
-            # start timer for thank you page
-            start_time = time.time()
-            end_time = start_time + 1.0
-            return redirect('/leaderboard/personalstats')
-        else:
-            message = "Invalid Email"
-    Logins = []
-    Logouts = []
-    now = time.time()
-    pathLogin = os.path.abspath(os.path.dirname(__file__)) + loginTimeFile
-    pathLogout = os.path.abspath(os.path.dirname(__file__)) + logoutTimeFile
-    with open(pathLogin, 'r', newline="") as csvfile:
-        reader = csv.reader(csvfile)
-        header = next(reader)
-        for row in reader:
-            # Logins within last 7 days
-            Logins.append(Login(row[0], row[1]))
-    with open(pathLogout, 'r', newline="") as csvfile:
-        reader = csv.reader(csvfile)
-        header = next(reader)
-        for row in reader:
-            Logouts.append(Logout(row[0], row[1]))
-    sorted_by_hours = RankHours(Logins,Logouts)
-    print(sorted_by_hours)
-    students = []
-    for i in range(50):
-        hours=sorted_by_hours[i].hours
-        special = ""
-        emoji = ""
-        if hours < 5:
-            tier = "(New)"
-        elif hours < 15:
-            tier = "🪵"
-        elif hours < 30:
-            tier = "🟤"
-        elif hours < 50:
-            tier = "🔘"
-        elif hours < 80:
-            tier = "👑"
-        elif hours < 120:
-            tier = "🟩"
-        elif hours < 160:
-            tier = "♦️"
-        else:
-            tier = "💎"
-        if checkTutor(sorted_by_hours[i].email):
-            special = "- Tutor"
-            emoji = "✏️"
-        if sorted_by_hours[i].email == "jfauson@uccs.edu":
-            special = "- Creator"
-            emoji = "👾"
-        students.append(emoji + " " + str(sorted_by_hours[i]) + " " + special + " " + tier)
-    studentOfTheWeek = StudentOfTheWeek()
-    #print(studentOfTheWeek)
+                # Logins within last 7 days
+                Logins.append(Login(row[0], row[1]))
+        with open(pathLogout, 'r', newline="") as csvfile:
+            reader = csv.reader(csvfile)
+            header = next(reader)
+            for row in reader:
+                Logouts.append(Logout(row[0], row[1]))
+        sorted_by_hours = RankHours(Logins,Logouts)
+        print(sorted_by_hours)
+        students = []
+        for i in range(50):
+            hours=sorted_by_hours[i].hours
+            special = ""
+            emoji = ""
+            if hours < 5:
+                tier = "(New)"
+            elif hours < 15:
+                tier = "🪵"
+            elif hours < 30:
+                tier = "🟤"
+            elif hours < 50:
+                tier = "🔘"
+            elif hours < 80:
+                tier = "👑"
+            elif hours < 120:
+                tier = "🟩"
+            elif hours < 160:
+                tier = "♦️"
+            else:
+                tier = "💎"
+            if checkTutor(sorted_by_hours[i].email):
+                special = "- Tutor"
+                emoji = "✏️"
+            if sorted_by_hours[i].email == "jfauson@uccs.edu":
+                special = "- Creator"
+                emoji = "👾"
+            students.append(emoji + " " + str(sorted_by_hours[i]) + " " + special + " " + tier)
+        studentOfTheWeek = StudentOfTheWeek()
+        
+        #print(studentOfTheWeek)
+    except:
+        studentOfTheWeek = "N/A"
+        students = ["N/A"]
     return render_template('leaderboard2.0.html', message=message,form=form, students=students, studentOfTheWeek=studentOfTheWeek)
+
 @app.route('/leaderboard/personalstats')
 def personalStats():
     global emailStat, sorted_by_hours
@@ -337,8 +411,8 @@ def StudentOfTheWeek():
     Logins = []
     Logouts = []
     now = time.time()
-    pathLogin = os.path.abspath(os.path.dirname(__file__)) + loginTimeFile
-    pathLogout = os.path.abspath(os.path.dirname(__file__)) + logoutTimeFile
+    pathLogin = MasterPath + loginTimeFile
+    pathLogout = MasterPath + logoutTimeFile
     with open(pathLogin, 'r', newline="") as csvfile:
         reader = csv.reader(csvfile)
         header = next(reader)
@@ -384,7 +458,7 @@ def StudentOfTheWeek():
     except:
         return "No Student of the Week"
 def findLoginCount(email):
-    pathW = os.path.abspath(os.path.dirname(__file__)) + loginTimeFile
+    pathW = MasterPath + loginTimeFile
     count = 0
     with open(pathW, 'r', newline="") as csvfile:
         reader = csv.reader(csvfile)
@@ -398,8 +472,8 @@ def calculateAllHours(student):
     Logins = []
     Logouts = []
     now = time.time()
-    pathLogin = os.path.abspath(os.path.dirname(__file__)) + loginTimeFile
-    pathLogout = os.path.abspath(os.path.dirname(__file__)) + logoutTimeFile
+    pathLogin = MasterPath + loginTimeFile
+    pathLogout = MasterPath + logoutTimeFile
     with open(pathLogin, 'r', newline="") as csvfile:
         reader = csv.reader(csvfile)
         header = next(reader)
@@ -429,8 +503,8 @@ def calculateAllHours(student):
             Person1.hours += hours
     return round(Person1.hours,2)
 def calculateHours1(email, logoutTime):
-    pathLogin = os.path.abspath(os.path.dirname(__file__)) + loginTimeFile
-    pathLogout = os.path.abspath(os.path.dirname(__file__)) + logoutTimeFile
+    pathLogin = MasterPath + loginTimeFile
+    pathLogout = MasterPath + logoutTimeFile
     loginList = []
     logoutList = []
     with open(pathLogin, 'r', newline="") as csvfile:
@@ -452,7 +526,7 @@ def calculateHours1(email, logoutTime):
     else:
         return 0
 def checkRecent(email, loginTime):
-    path = os.path.abspath(os.path.dirname(__file__)) + loginTimeFile
+    path = MasterPath + loginTimeFile
     with open(path, 'r', newline="") as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
@@ -462,7 +536,7 @@ def checkRecent(email, loginTime):
                    return True
     return False
 def checkTutor(email):
-    path = os.path.abspath(os.path.dirname(__file__)) + '/Data/tutors.csv'
+    path = MasterPath + '/Data/tutors.csv'
     tutor = False
     with open(path, 'r', newline="") as csvfile:
         reader = csv.reader(csvfile)
@@ -471,7 +545,7 @@ def checkTutor(email):
                 tutor = True
     return tutor
 def findName(email):
-    path = os.path.abspath(os.path.dirname(__file__)) + emailList
+    path = MasterPath + emailList
     with open(path, 'r', newline="") as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
@@ -483,7 +557,7 @@ def findName(email):
     return email
 def verifyEmail(result):
     inputEmail = result.get("email") + "@uccs.edu"
-    pathR = os.path.abspath(os.path.dirname(__file__)) + emailList
+    pathR = MasterPath + emailList
     valid = False
     with open(pathR, 'r', newline="") as csvfile:
         reader = csv.reader(csvfile)
@@ -497,7 +571,7 @@ def signup():
     form = SignUpForm()
     message = ""
     globalemail = ""
-    pathW = os.path.abspath(os.path.dirname(__file__)) + pendingListFile
+    pathW = MasterPath + pendingListFile
     if form.is_submitted():
         result = request.form
         if not verifyEmail(result) and result.get("email") != '':
@@ -533,8 +607,8 @@ def admin():
 def admin_verify():
     emails = []
     form = VerifyForm()
-    pathPending = os.path.abspath(os.path.dirname(__file__)) + pendingListFile
-    pathEmail = os.path.abspath(os.path.dirname(__file__)) + emailList
+    pathPending = MasterPath + pendingListFile
+    pathEmail = MasterPath + emailList
     global admin
     # Read CSV file (assuming it's in /static/emails.csv)
     with open(pathPending, newline='') as f:
@@ -591,20 +665,12 @@ def RankHours(Logins,Logouts):
                 if float(Logins[i].login) + 3600 * 14 > float(Logouts[j].logout) > float(Logins[i].login):
                     if float(Logouts[j].logout) < nextlogin or nextlogin == -1:
                         hours = round((float(Logouts[j].logout) - float(Logins[i].login)) / 3600, 2)
-                        logoutDate = datetime.fromtimestamp(float(Logouts[j].logout))
-                        if Logins[i].email == "jfauson@uccs.edu":
-                            print("My hours:", hours)
-                            loginDate = datetime.fromtimestamp(float(Logins[i].login))
-                            print("Login:", loginDate, "Logout:", logoutDate)
                         logoutFound = True
                         del Logouts[j]
                         break
             j += 1
         if not logoutFound:
             hours = 0.5
-            if Logins[i].email == "jfauson@uccs.edu":
-                loginDate = datetime.fromtimestamp(float(Logins[i].login))
-                print("Logout not found Login:", loginDate)
         if Logins[i].email not in PeopleEmails:
             PeopleByHours.append(PersonHours(Logins[i].email, hours))
             PeopleEmails.append(Logins[i].email)
@@ -613,11 +679,6 @@ def RankHours(Logins,Logouts):
                 if person.email == Logins[i].email:
                     person.hours += hours
                     break
-        if Logins[i].email == "jfauson@uccs.edu":
-            for logout in Logouts:
-                if logout.email == "jfauson@uccs.edu":
-                    logoutDate = datetime.fromtimestamp(float(logout.logout))
-                    print("Logout not used:", logoutDate)
 
     sorted_by_hours = sorted(PeopleByHours, key=lambda p: p.hours, reverse=True)
     return sorted_by_hours
@@ -626,12 +687,12 @@ if __name__ == '__main__':
     # === Main Logic ===
     #if not is_admin():
         #pyuac.runAsAdmin()
-
-    port = 5000
+    LoadSettings()
+    port = 5000 #Don't change
     url = f"http://127.0.0.1:{port}"
 
     # Use a thread to open the browser after a short delay to allow the server to start
     threading.Timer(1.25, lambda: webbrowser.open(url)).start()
 
     # Run the Flask application
-    app.run(port=port, debug=False)
+    app.run(port=port, debug=True)
