@@ -196,13 +196,9 @@
         },15000);
       }
     },5000);
-
-    document.addEventListener('keydown',function(event){
-      if(event.ctrlKey && event.key === 'Enter'){
-        document.getElementById("altSignOut").value="True";
-        document.form1.submit();
-      }
-    });
+    setTimeout(function() {
+      window.location.replace("http://127.0.0.1:5000/");
+    }, 60000); // Reload every 3 seconds
   </script>
 </body>
 </html>
