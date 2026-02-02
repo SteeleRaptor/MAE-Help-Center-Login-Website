@@ -217,13 +217,7 @@ def thankYou():
     #if time is not up then render template
     if time.time()<=end_time:
         if globalemail != "":
-            pathW = MasterPath + loginTimeFile
-            count = 0
-            with open(pathW, 'r', newline="") as csvfile:
-                reader = csv.reader(csvfile)
-                for row in reader:
-                    if row[0] == globalemail:
-                        count += 1
+            count = findLoginCount(globalemail)
             message = "You have visited the MAE Help Center " + str(count) + " times!"
         else:
             message = ""
