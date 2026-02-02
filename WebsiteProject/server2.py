@@ -354,10 +354,14 @@ def leaderBoard():
             for row in reader:
                 Logouts.append(Logout(row[0], row[1]))
         sorted_by_hours = RankHours(Logins,Logouts)
+        print("Ranking: ----------------")
         print(sorted_by_hours)
         students = []
+        numOfRankings = 50
+        if len(sorted_by_hours) < 50:
+            numOfRankings = len(sorted_by_hours)
         #Display Tier
-        for i in range(50):
+        for i in range(numOfRankings):
             email=sorted_by_hours[i].email
             hours = calculateAllHoursSingle(email)
             special = ""
@@ -369,8 +373,9 @@ def leaderBoard():
             if sorted_by_hours[i].email == "jfauson@uccs.edu":
                 special = "- Creator"
                 emoji = "👾"
-            students.append(emoji + " " + str(sorted_by_hours[i]) + " " + special + " " + tier)
-    
+            if sorted_by_hours[i].hours > 10:
+                students.append(emoji + " " + str(sorted_by_hours[i]) + " " + special + " " + tier)
+
         studentOfTheWeek = StudentOfTheWeek()
         #print(studentOfTheWeek)
     except:
@@ -439,14 +444,8 @@ def StudentOfTheWeek():
         print("Student of the week ranking:")
         print("-------------------")
         print(sorted_by_hours7)
-        hours = 0
-        for j, s in enumerate(sorted_by_hours):
-            if s.email == sorted_by_hours7[0].email:
-                index = j
-                break
-        if index != -1:
-            hours = sorted_by_hours[index].hours
-        tier = getTier(hours)
+        hours = calculateAllHoursSingle(sorted_by_hours7[0].email)
+        tier=getTier(hours)
         return str(sorted_by_hours7[0])+" " +tier
     except:
         return "No Student of the Week"
@@ -494,18 +493,31 @@ def RankHours(Logins,Logouts):
 def searchAlgorithim(Logins,Logouts,type, PeopleByHours, PeopleEmails):
     #type = 1: single person search
     #type = 2: multiple person search
+    #For each login, starting from most recent
+    if len(Logouts)<=0:
+        print("Error no logouts recorded")
+        return
     for i in range(len(Logins)-1, -1, -1):
         hours = 0
         logoutFound = False
-        nextlogin = -1
-        j = i + 1
+        nextlogin = -1 #no next login starting off
+        j = i + 1 #j searchs forward
+        #while j is before end of logins, logout is within 24 hours of login
         while j < len(Logins) and float(Logins[i].login) + 3600 * 24 > float(Logins[j].login):
+            #record next login
             if Logins[i].email == Logins[j].email:
                 nextlogin = float(Logins[j].login)
-            j += 1
-        j = len(Logouts) - 1
-        while Logins[i].login < Logouts[j].logout and j >= 0:
-            j -= 1
+            j += 1 #go to next logout
+        #new j that starts at end of logouts
+        j = len(Logouts)-1
+        if len(Logouts)<=0:
+            break
+            print("Error no logouts recorded")
+            
+        #while j is not at beginning of file and login is before logout
+        while j > 0 and Logins[i].login < Logouts[j].logout:
+            j -= 1 #move backward
+        #while
         while j < len(Logouts) and float(Logins[i].login) + 3600 * 16 > float(Logouts[j].logout):
 
             if Logins[i].email == Logouts[j].email:
@@ -685,14 +697,15 @@ def admin_verify():
         return redirect('/')
 
 def getTier(hours):
-    tierNames = ["(New)", "🪵", "🟤", "🔘", "🪙", "🟩","♦️", "Paul🫠", "💎", "☕", "🆂-Tier"]
-    tierMax = [5,15,30,50,75,105,145,189,250,300,400]
-    for i in range(len(tierNames)):
-        if hours < tierMax[i]:
+    tierNames = ["(New)", "🪵", "🟤", "🔘", "🪙", "🟩","♦️", "| Paul Tier🫠", "💎", "☕", "🆂-Tier"]
+    tierMin = [0,5,20,40,70,100,140,189,250,300,400]
+    
+    for i in range(len(tierNames)-1,-1,-1):
+        if float(hours) >= tierMin[i]:
             tier = tierNames[i]
-        else:
-            break
-    return tier
+            print("Tier hours:", hours, tier)
+            return tier
+    return "N/A"
 
 if __name__ == '__main__':
     # === Main Logic ===
