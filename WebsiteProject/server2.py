@@ -5,6 +5,7 @@ import sys
 import subprocess
 import pyuac
 import openpyxl
+import pandas as pd
 
 def is_admin():
     try:
@@ -71,18 +72,19 @@ def LoadSettings():
 #Webpages
 @app.route('/', methods = ["get" ,"post"])
 def signinPage():
-    print("0")
     global end_time, globalemail, logoutTime,admin
     admin = False
     form = SignInForm()
-    studentOfTheWeek = StudentOfTheWeek()
+    try:
+        studentOfTheWeek = StudentOfTheWeek()
+    except:
+        studentOfTheWeek = "N/A"
     message = ""
     if form.is_submitted():
         result = request.form
         #Signin procedure
-        print(1)
         if "signIn" in result:
-            signin(result)
+            message,valid = signin(result)
             if valid:
                 return redirect('/thankyou')
         #Signout procedure
@@ -95,7 +97,6 @@ def signinPage():
     return render_template('signin2.0.html', form=form, message=message, studentOfTheWeek=studentOfTheWeek)
 
 def signin(result):
-    print(2)
     message = ""
     global end_time, globalemail
     recordTime = time.time()
@@ -128,8 +129,9 @@ def signin(result):
     return message, valid
     
 def signout(result):
-    global globalemail, logoutTime
+    global globalemail, logoutTime, end_time
     recordTime = time.time()
+    message = ""
     # verification process
     inputEmail = result.get("email") + "@uccs.edu"
     pathR = MasterPath + emailList
@@ -144,7 +146,7 @@ def signout(result):
     pathW = MasterPath + logoutTimeFile
     if valid:
         # write to csv file
-        #checkAccident(inputEmail,recordTime)
+        checkAccident(inputEmail,recordTime)
         with open(pathW, 'a', newline="") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow([inputEmail, recordTime])
@@ -160,25 +162,26 @@ def signout(result):
         message = "Invalid Email"
     return message, valid
 
-'''def checkAccident(inputEmail,recordTime):
+def checkAccident(inputEmail,recordTime):
     GraceTime = float(recordTime)-120 #2 minutes to cancel logout
     pathR = MasterPath + loginTimeFile
-    count = 0
     accident = False
-    with open(pathR, 'r+', newline="") as csvfile:
-        reader = csv.reader(csvfile)
-        writer = csv.writer(csvfile)
-        for row in reader:
-            if row[0] == globalemail:
-                print("oof")
-                #print(row[1])
-                #print(float(row[1]))
-                #print(GraceTime)
-                #if float(row[1]) >= GraceTime:
-                    #accident = True
-            if accident:
-                writer.writerow([""])
-                print("accident fixed")'''
+    df = pd.read_csv(pathR)
+    print(df)
+    with open(pathR, 'r', newline="") as csvfile:
+        lines = csvfile.readlines()
+        last_line = lines[-1].split(",")
+        lastEmail = last_line[0]
+        print(lastEmail," test 1")
+        lastTime = float(last_line[1].strip())
+        print(lastTime, "test 2")
+        if lastEmail == inputEmail:
+            print("oof")
+            if lastTime >= GraceTime:
+                accident = True
+        if accident:
+            df = df.drop(df.index[-1])
+            df.to_csv(pathR, index=False)
 
 #Thank you page
 @app.route('/thankyou')
